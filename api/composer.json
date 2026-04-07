@@ -1,0 +1,21 @@
+{
+  "name": "extrahelden/api",
+  "description": "REST API for Extrahelden Minecraft Management System",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "slim/slim": "^4.12",
+    "slim/psr7": "^1.6",
+    "firebase/php-jwt": "^6.10",
+    "league/oauth2-client": "^2.7",
+    "wohali/oauth2-discord-new": "^1.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "Extrahelden\\Api\\": "v1/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}
