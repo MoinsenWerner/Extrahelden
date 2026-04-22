@@ -1,0 +1,31 @@
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.server.MinecraftServer;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
+
+public class FabricApiMod implements ModInitializer {
+    private static MinecraftServer minecraftServer;
+
+    @Override
+    public void onInitialize() {
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            minecraftServer = server;
+            startHttpServer();
+        });
+    }
+
+    private void startHttpServer() {
+        try {
+            // Port 8080 als Beispiel - muss ggf. in der Config anpassbar sein
+            HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            server.createContext("/api/get", new ApiHandler(minecraftServer));
+            server.setExecutor(Executors.newFixedThreadPool(5));
+            server.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}

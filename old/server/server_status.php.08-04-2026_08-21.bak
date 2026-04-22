@@ -1,0 +1,93 @@
+<?php
+/**
+ * Minecraft Server Status Query
+ * Spezialisiert auf Performance und Fehlerresistenz.
+ */
+
+declare(strict_types=1);
+
+class MinecraftServerStatus {
+    private string $host;
+    private int $port;
+    private int $timeout;
+
+    public function __construct(string $host, int $port = 25565, int $timeout = 3) {
+        $this->host = $host;
+        $this->port = $port;
+        $this->timeout = $timeout;
+    }
+
+    public function query(): ?array {
+        $socket = @fsockopen($this->host, $this->port, $errno, $errstr, $this->timeout);
+
+        if (!$socket) {
+            return null;
+        }
+
+        // Handshake & Request (SLP 1.7+)
+        fwrite($socket, "\x06\x00\xff\x01\x00\x00\x00");
+        $payload = fread($socket, 1024);
+        fclose($socket);
+
+        if (empty($payload)) return null;
+
+        // Extraktion der JSON-Daten aus dem Stream
+        $start = strpos($payload, '{');
+        $end = strrpos($payload, '}');
+        
+        if ($start === false || $end === false) return null;
+
+        $json = substr($payload, $start, $end - $start + 1);
+        return json_decode($json, true);
+    }
+}
+
+// Konfiguration
+$serverIp = 'extrahelden.de'; 
+$serverPort = 18888;
+
+$query = new MinecraftServerStatus($serverIp, $serverPort);
+$data = $query->query();
+?>
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Server Status</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #eee; padding: 20px; }
+        .status-card { border: 1px solid #444; padding: 15px; border-radius: 8px; max-width: 400px; }
+        .player-list { list-style: none; padding: 0; }
+        .player-item { background: #333; margin: 5px 0; padding: 8px; border-radius: 4px; display: flex; align-items: center; }
+        .online-dot { height: 10px; width: 10px; background-color: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="status-card">
+    <h2>Server Status</h2>
+    <p>IP: <strong><?= htmlspecialchars($serverIp) ?></strong></p>
+
+    <?php if ($data && isset($data['players'])): ?>
+        <p><span class="online-dot"></span> Online: <?= $data['players']['online'] ?> / <?= $data['players']['max'] ?></p>
+        
+        <h3>Spieler:</h3>
+        <ul class="player-list">
+            <?php if (!empty($data['players']['sample'])): ?>
+                <?php foreach ($data['players']['sample'] as $player): ?>
+                    <li class="player-item">
+                        <?= htmlspecialchars($player['name']) ?>
+                    </li>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <li>Keine Spieler online oder Server verbirgt Namen.</li>
+            <?php endif; ?>
+        </ul>
+    <?php else: ?>
+        <p style="color: #e74c3c;">Server ist offline oder nicht erreichbar.</p>
+    <?php endif; ?>
+</div>
+
+</body>
+</html>
