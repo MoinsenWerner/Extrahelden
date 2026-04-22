@@ -1,0 +1,153 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    background: #FFFFFF;
+    
+}
+
+.header {
+    background: url('../assets/background.png') no-repeat center/cover;
+    text-align: center;
+    padding: 100px 20px;
+    text-shadow: 2px 2px #000;
+}
+
+.header logo {
+    height="100px";
+    with="100px";
+}
+
+.header h1 {
+    font-size: 3.5em;
+    color: #FFFFFF;
+    margin-bottom: 20px;
+}
+
+.header p1 {
+    color: #FFFFFF;
+    background: #2d2d2d;
+}
+
+.server-ip{
+    color: #FFFFFF;
+    background: #2d2d2d;
+}
+
+nav {
+    background: #333;
+    padding: 10px;
+    text-align: center;
+}
+
+nav a {
+    color: white;
+    margin: 0 15px;
+    text-decoration: none;
+}
+
+nav a:hover {
+    color: #4CAF50;
+}
+
+.features {
+    padding: 50px 20px;
+    background: #FFFFFF;
+    text-align: center;
+}
+
+.feature-card {
+    background: #333;
+    padding: 20px;
+    margin: 15px;
+    border-radius: 10px;
+    text-align: center;
+    max-width: 300px;
+    display: inline-block;
+    color: #FFFFFF;
+}
+
+.feature-card-login {
+    background: #333;
+    padding: 20px;
+    margin: 15px;
+    border-radius: 10px;
+    text-align: center;
+    max-width: 300px;
+    color: #FFFFFF;
+    
+    /* Neu hinzugefügte Eigenschaften */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Optional: Für responsives Verhalten auf sehr kleinen Screens */
+@media (max-width: 320px) {
+    .feature-card-login {
+        width: 90%;
+        margin: 15px auto;
+    }
+}
+
+.login-form{
+    background: #333;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    border-radius: 10px;
+    text-align: center;
+    color: #FFFFFF;
+}
+
+.server-status {
+    background: #333;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    border-radius: 10px;
+    text-align: center;
+    color: #FFFFFF;
+}
+
+.login-form input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: none;
+    color: #000000;
+}
+
+.login-form button {
+    background: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.login-form button:hover {
+    background: #45a049;
+}
+
+.server-status p {
+    margin: 5px 0;
+}
+
+.player-list {
+    margin-top: 10px;
+}
+
+footer {
+    background: #333;
+    padding: 20px;
+    text-align: center;
+    color: #FFFFFF;
+}

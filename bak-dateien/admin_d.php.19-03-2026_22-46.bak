@@ -1,0 +1,129 @@
+<?php
+// admin_d.php – Verwaltung & Linked-Hearts mit Live-API UUID Abfrage
+declare(strict_types=1);
+require __DIR__ . '/db.php';
+require __DIR__ . '/_layout.php';
+
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+require_admin();
+
+$pdo = db();
+if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
+$csrf = $_SESSION['csrf'];
+
+/**
+ * Zählt die aktuellen Spieler in der Datenbank
+ */
+function getActivePlayerCount(PDO $pdo): int {
+    return (int) $pdo->query("SELECT COUNT(*) FROM users WHERE is_player = 1")->fetchColumn();
+}
+
+/**
+ * Holt die UUID zu einem Minecraft-Namen via Mojang API
+ */
+function getUuidByName(string $name): string {
+    $url = "https://api.mojang.com/users/profiles/minecraft/" . urlencode($name);
+    $ctx = stream_context_create(['http' => ['timeout' => 3, 'ignore_errors' => true]]);
+    $resp = @file_get_contents($url, false, $ctx);
+    
+    if ($resp) {
+        $data = json_decode($resp, true);
+        if (!empty($data['id'])) {
+            return $data['id']; 
+        }
+    }
+    return $name; 
+}
+
+/**
+ * Kernlogik zur Paarbildung und Dateierstellung
+ */
+function generateLinkedHearts(array $players): void {
+    shuffle($players);
+    
+    $overridesUUID = [];
+    $overridesName = [];
+    
+    for ($i = 0; $i < count($players); $i += 2) {
+        if (isset($players[$i + 1])) {
+            $n1 = $players[$i]['username'];
+            $n2 = $players[$i + 1]['username'];
+
+            $uuid1 = getUuidByName($n1);
+            $uuid2 = getUuidByName($n2);
+
+            $overridesUUID[] = "name:{$uuid1}->{$uuid2}";
+            $overridesUUID[] = "name:{$uuid2}->{$uuid1}";
+            
+            $overridesName[] = "name:{$n1}->{$n2}";
+            $overridesName[] = "name:{$n2}->{$n1}";
+        }
+    }
+
+    $pathUUID = '/usr/share/icons/cecolor/linkedhearts.txt';
+    $pathPlain = '/usr/share/icons/cecolor/plain/linkedhearts.txt';
+
+    if (!is_dir(dirname($pathPlain))) { @mkdir(dirname($pathPlain), 0775, true); }
+
+    $jsonUUID = json_encode(["linked_hearts" => ["headOverrides" => $overridesUUID]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    $jsonName = json_encode(["linked_hearts" => ["headOverrides" => $overridesName]], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    file_put_contents($pathUUID, $jsonUUID);
+    file_put_contents($pathPlain, $jsonName);
+}
+
+// POST-Handling
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) {
+        flash("Ungültiges CSRF-Token.", "error");
+    } else {
+        $action = $_POST['action'] ?? '';
+
+        if ($action === 'save_settings') {
+            $maxPlayers = (int)($_POST['max_players_count'] ?? 0);
+            set_setting('max_players_count', (string)$maxPlayers);
+            
+            if ($maxPlayers > 0) {
+                $stmt = $pdo->prepare("SELECT username FROM users WHERE is_player = 1 AND username IS NOT NULL");
+                $stmt->execute();
+                $players = $stmt->fetchAll();
+
+                if (count($players) >= $maxPlayers) {
+                    generateLinkedHearts($players);
+                    flash("Dateien generiert! UUIDs wurden via Mojang API aufgelöst.", "success");
+                }
+            }
+            flash("Einstellungen gespeichert.", "success");
+        }
+    }
+}
+
+render_header("Admin Dashboard");
+$cfg_max = get_setting('max_players_count', '0');
+$currentPlayerCount = getActivePlayerCount($pdo);
+?>
+<section class="row">
+  <div class="card">
+    <h2>Linked-Hearts & API Integration</h2>
+    
+    <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(0,0,0,0.05); border-radius: 4px;">
+        <strong>Status:</strong> Aktuell sind <strong><?= $currentPlayerCount ?></strong> Spieler registriert.
+    </div>
+
+    <?php foreach (consume_flashes() as [$type, $msg]): ?>
+      <div class="flash <?= htmlspecialchars($type) ?>"><?= htmlspecialchars($msg) ?></div>
+    <?php endforeach; ?>
+
+    <form method="post">
+      <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf) ?>">
+      <input type="hidden" name="action" value="save_settings">
+      
+      <label>Benötigte Spieleranzahl (Zielwert)<br>
+        <input type="number" name="max_players_count" value="<?= htmlspecialchars($cfg_max) ?>" min="0">
+      </label>
+      <button class="btn btn-primary" type="submit">Speichern & Generieren</button>
+    </form>
+    <p><small>Hinweis: Die Generierung wird erst ausgelöst, wenn die registrierten Spieler die Zielanzahl erreichen.</small></p>
+  </div>
+</section>
+<?php render_footer(); ?>

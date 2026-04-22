@@ -1,0 +1,100 @@
+<?php
+// admin_d.php – Verwaltung & Linked-Hearts Automatisierung
+declare(strict_types=1);
+require __DIR__ . '/db.php';
+require __DIR__ . '/_layout.php';
+
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+require_admin();
+
+$pdo = db();
+if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
+$csrf = $_SESSION['csrf'];
+
+/**
+ * Kernlogik zur Paarbildung und Dateierstellung im JSON-Format
+ */
+function generateLinkedHearts(array $players): void {
+    shuffle($players);
+    $overrides = [];
+    
+    for ($i = 0; $i < count($players); $i += 2) {
+        if (isset($players[$i + 1])) {
+            $p1 = $players[$i]['username'];
+            $p2 = $players[$i + 1]['username'];
+            
+            // Format: "name:SpielerA->SpielerB"
+            $overrides[] = "name:{$p1}->{$p2}";
+            $overrides[] = "name:{$p2}->{$p1}";
+        }
+    }
+
+    // Strukturaufbau für das neue JSON-Format
+    $data = [
+        "linked_hearts" => [
+            "headOverrides" => $overrides
+        ]
+    ];
+
+    // JSON_PRETTY_PRINT für Lesbarkeit, JSON_UNESCAPED_SLASHES zur Sicherheit bei Namen
+    $content = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    
+    $filePath = '/usr/share/icons/cecolor/linkedhearts.txt';
+    
+    // Backup erstellen, falls Datei existiert
+    if (file_exists($filePath)) { 
+        copy($filePath, $filePath . '.' . date('Y-m-d_H-i-s') . '.bak'); 
+    }
+    
+    file_put_contents($filePath, $content);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!hash_equals($csrf, (string)($_POST['csrf'] ?? ''))) { die("CSRF mismatch"); }
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'save_settings') {
+        $maxPlayers = (int)($_POST['max_players_count'] ?? 0);
+        set_setting('max_players_count', (string)$maxPlayers);
+        
+        // Speichern der anderen Discord-Settings (gekürzt für Übersicht)
+        set_setting('discord_bot_token', $_POST['discord_bot_token'] ?? '');
+        
+        // Prüfung auf Spieleranzahl
+        if ($maxPlayers > 0) {
+            $stmt = $pdo->prepare("SELECT username FROM users WHERE is_player = 1 AND username IS NOT NULL AND discord_name IS NOT NULL");
+            $stmt->execute();
+            $players = $stmt->fetchAll();
+            if (count($players) >= $maxPlayers) {
+                generateLinkedHearts($players);
+                flash("Maximale Spielerzahl erreicht! Paare wurden generiert.", "success");
+            }
+        }
+        flash("Einstellungen gespeichert.", "success");
+    }
+}
+
+render_header("Admin Dashboard");
+$cfg_max = get_setting('max_players_count', '0');
+$cfg_token = get_setting('discord_bot_token', '');
+?>
+<section class="row">
+  <div class="card">
+    <h2>Projekt-Anmeldung & Discord</h2>
+    <form method="post">
+      <input type="hidden" name="csrf" value="<?=htmlspecialchars($csrf)?>">
+      <input type="hidden" name="action" value="save_settings">
+      
+      <!--label>Discord Bot Token<br>
+        <input type="password" name="discord_bot_token" value="<?=htmlspecialchars($cfg_token)?>">
+      </label><br><br-->
+
+      <label>Anzahl der Gesamtspieler (Paarbildung)<br>
+        <input type="number" name="max_players_count" value="<?=htmlspecialchars($cfg_max)?>" min="0">
+      </label><p><small>Sobald diese Anzahl an Spielern (is_player=1) erreicht ist, wird die linkedhearts.txt neu generiert.</small></p>
+
+      <button class="btn btn-primary" type="submit">Speichern</button>
+    </form>
+  </div>
+</section>
+<?php render_footer(); ?>
