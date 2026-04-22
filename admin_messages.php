@@ -1,6 +1,21 @@
 <?php
 // admin_messages.php – Bearbeitung der Discord-Statustexte, Test-Funktionen & Live-Vorschau
 declare(strict_types=1);
+
+if (!function_exists('http_json')) {
+    function http_json(string $method, string $url, array $headers, array $body): ?array {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+        $res = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ['code' => $code, 'body' => $res];
+    }
+}
+
 require __DIR__ . '/db.php';
 require __DIR__ . '/_layout.php';
 
@@ -18,7 +33,7 @@ if (!function_exists('discord_cfg')) {
     }
 }
 
-if (!function_exists('http_json')) {
+/*if (!function_exists('http_json')) {
     function http_json(string $method, string $url, array $headers, array $body): ?array {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
@@ -30,7 +45,7 @@ if (!function_exists('http_json')) {
         curl_close($ch);
         return ['code' => $code, 'body' => $res];
     }
-}
+}*/
 
 if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
 $csrf = $_SESSION['csrf'];

@@ -239,6 +239,8 @@ if (!function_exists('render_header')) {
             <?php endif; ?>
             <a class="btn btn-ghost" href="under_construction.php">Duelle</a>
             <a disabled class="btn btn-ghost" href="status.php">Spieler-Status</a>
+            <a class="btn btn-ghost" href="bugreport.php">Bug-Report</a>
+            <a class="btn btn-ghost" href="https://crafty.extrahelden.de/status">Serverstatus</a>
           <?php else: ?>
             <!-- Mitglieder: Hamburger-Menü -->
             <div class="menu">
@@ -249,6 +251,7 @@ if (!function_exists('render_header')) {
               <div id="memberMenu" class="dropdown" hidden>
                 <!--<a href="index.php">Start</a>-->
                 <a href="documents.php">Dokumente</a>
+                <a href="https://crafty.extrahelden.de/status">Serverstatus</a>
                 <?php if ($applyEnabled): ?>
                   <!--<a href="apply.php"><?=htmlspecialchars($applyTitle)?></a>-->
                 <?php endif; ?>
@@ -256,6 +259,7 @@ if (!function_exists('render_header')) {
                 <a href="account.php">Konto</a>
                 <a href="under_construction.php">Duelle</a>
                 <a href="status.php">Spieler-Status</a>
+                <a href="bugreport.php">Bug-Report</a>
                 <!--a href="votes.php">Abstimmungen</a-->
               </div>
             </div>
@@ -275,6 +279,7 @@ if (!function_exists('render_header')) {
                 <!--a href="admin_kingdoms.php">Königreiche</a-->
                 <a href="admin_automator.php">DC-Bot Trigger</a>
                 <a href="admin_events.php">DC-Bot Events</a>
+                <a href="bugs_admin.php">Bugs</a>
               </div>
             </div>
           <?php endif; ?>

@@ -1,0 +1,68 @@
+<?php
+declare(strict_types=1);
+require __DIR__ . '/db.php';
+require __DIR__ . '/_layout.php';
+
+if (!isset($_SESSION['user_id']) || empty($_SESSION['is_admin'])) { die("Zugriff verweigert."); }
+
+$pdo = db();
+$bugId = (int)($_GET['id'] ?? 0);
+
+// Status-Update oder Aktionen verarbeiten
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['new_status'])) {
+        $pdo->prepare("UPDATE bug_reports SET status = ? WHERE id = ?")->execute([$_POST['new_status'], $bugId]);
+    } elseif (isset($_POST['action_archive'])) {
+        $pdo->prepare("UPDATE bug_reports SET archived = 1 WHERE id = ?")->execute([$bugId]);
+        header('Location: bugs_admin.php'); exit;
+    } elseif (isset($_POST['action_delete'])) {
+        $pdo->prepare("DELETE FROM bug_reports WHERE id = ?")->execute([$bugId]);
+        header('Location: bugs_admin.php'); exit;
+    }
+}
+
+$stmt = $pdo->prepare("SELECT * FROM bug_reports WHERE id = ?");
+$stmt->execute([$bugId]);
+$bug = $stmt->fetch();
+if (!$bug) { header('Location: bugs_admin.php'); exit; }
+
+$pics = json_decode($bug['pictures'] ?? '[]', true);
+render_header('Bug #' . $bugId);
+?>
+
+<section class="row">
+    <div class="card" style="width:100%">
+        <div style="display:flex; justify-content: space-between; margin-bottom: 20px;">
+            <h2>Bug Report #<?= $bugId ?></h2>
+            <div style="display:flex; gap:10px">
+                <form method="post" style="display:inline">
+                    <button type="submit" name="action_archive" class="btn">Archivieren</button>
+                    <button type="submit" name="action_delete" class="btn" style="color:red" onclick="return confirm('Wirklich löschen?')">Löschen</button>
+                </form>
+                <a href="bugs_admin.php" class="btn">Zurück</a>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px">
+            <form method="post">
+                <label>Status:</label>
+                <select name="new_status" onchange="this.form.submit()" style="padding:5px; border-radius:5px; background:var(--bg); color:var(--text)">
+                    <option value="unbearbeitet" <?= $bug['status']=='unbearbeitet'?'selected':'' ?>>unbearbeitet</option>
+                    <option value="in Bearbeitung" <?= $bug['status']=='in Bearbeitung'?'selected':'' ?>>in Bearbeitung</option>
+                    <option value="Fertig" <?= $bug['status']=='Fertig'?'selected':'' ?>>Fertig</option>
+                    <option value="Größeres Problem" <?= $bug['status']=='Größeres Problem'?'selected':'' ?>>Größeres Problem</option>
+                </select>
+            </form>
+        </div>
+
+        <table style="width:100%; border-collapse: collapse;">
+            <tr><td style="width:150px; font-weight:bold;">Bereich:</td><td><?= htmlspecialchars($bug['appl']) ?></td></tr>
+            <tr><td style="font-weight:bold;">Datum:</td><td><?= htmlspecialchars($bug['created_at']) ?></td></tr>
+            <tr><td style="font-weight:bold;">Betreff:</td><td><?= htmlspecialchars($bug['title']) ?></td></tr>
+        </table>
+        <hr style="margin:20px 0; border:0; border-top:1px solid var(--border)">
+        <h3>Beschreibung</h3>
+        <div style="background:var(--card); padding:15px; border-radius:8px; border:1px solid var(--border); white-space:pre-wrap;"><?= htmlspecialchars($bug['description']) ?></div>
+        </div>
+</section>
+<?php render_footer(); ?>

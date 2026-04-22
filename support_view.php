@@ -2,20 +2,6 @@
 // support_view.php – Ticket ansehen, antworten, schließen/wiederöffnen/löschen (+Discord-Notify, „letzter Admin“)
 declare(strict_types=1);
 
-require __DIR__ . '/db.php';
-require __DIR__ . '/_layout.php';
-
-if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
-if (function_exists('require_login')) { require_login(); }
-elseif (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
-
-$user_id  = (int)($_SESSION['user_id'] ?? 0);
-$username = (string)($_SESSION['username'] ?? '');
-$is_admin = !empty($_SESSION['is_admin']) && (int)$_SESSION['is_admin'] === 1;
-
-if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
-$csrf = $_SESSION['csrf'];
-
 /* ---------- Discord Helper (Fallback) ---------- */
 if (!function_exists('discord_notify_by_name')) {
     function discord_cfg(): array {
@@ -80,6 +66,85 @@ if (!function_exists('discord_notify_by_name')) {
         if (!$ok) discord_send_to_fallback("Benachrichtigung für **{$discordName}** (DM nicht möglich): ".$message);
     }
 }
+
+require __DIR__ . '/db.php';
+require __DIR__ . '/_layout.php';
+
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
+if (function_exists('require_login')) { require_login(); }
+elseif (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+
+$user_id  = (int)($_SESSION['user_id'] ?? 0);
+$username = (string)($_SESSION['username'] ?? '');
+$is_admin = !empty($_SESSION['is_admin']) && (int)$_SESSION['is_admin'] === 1;
+
+if (empty($_SESSION['csrf'])) { $_SESSION['csrf'] = bin2hex(random_bytes(32)); }
+$csrf = $_SESSION['csrf'];
+
+/* ---------- Discord Helper (Fallback) ---------- */
+/*if (!function_exists('discord_notify_by_name')) {
+    function discord_cfg(): array {
+        return [
+            'token'       => get_setting('discord_bot_token', ''),
+            'guild_id'    => get_setting('discord_guild_id', ''),
+            'fallback_ch' => get_setting('discord_fallback_channel_id',''),
+        ];
+    }
+    if (!function_exists('http_json')) {
+    function http_json(string $method, string $url, array $headers, ?array $body=null, int $timeout=8): ?array {
+        if (!function_exists('curl_init')) { error_log('Discord: php-curl missing'); return null; }
+        $ch = curl_init($url);
+        $hdr = array_merge(['Accept: application/json'], $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST=>$method, CURLOPT_RETURNTRANSFER=>true,
+            CURLOPT_TIMEOUT=>$timeout, CURLOPT_CONNECTTIMEOUT=>$timeout,
+            CURLOPT_SSL_VERIFYPEER=>true, CURLOPT_SSL_VERIFYHOST=>2, CURLOPT_HTTPHEADER=>$hdr
+        ]);
+        if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+        $resp = curl_exec($ch); if ($resp === false) { curl_close($ch); return null; }
+        $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
+        return ['code'=>$code,'json'=>json_decode($resp,true)];
+    }
+    function discord_find_user_id_by_name(string $name): ?string {
+        $cfg = discord_cfg(); if ($cfg['token']==='' || $cfg['guild_id']==='') return null;
+        $url = "https://discord.com/api/v10/guilds/{$cfg['guild_id']}/members/search?query=".rawurlencode($name)."&limit=5";
+        $res = http_json('GET', $url, ['Authorization: Bot '.$cfg['token']]);
+        if (!$res || $res['code'] !== 200 || !is_array($res['json'])) return null;
+        $nameLower = mb_strtolower($name);
+        foreach ($res['json'] as $m) {
+            $u = $m['user'] ?? [];
+            $cand = [mb_strtolower($u['global_name'] ?? ''), mb_strtolower($u['username'] ?? ''), mb_strtolower($m['nick'] ?? '')];
+            if (in_array($nameLower, $cand, true)) return $u['id'] ?? null;
+        }
+        return $res['json'][0]['user']['id'] ?? null;
+    }}
+    function discord_dm_user_id(string $userId, string $message): bool {
+        $cfg = discord_cfg(); if ($cfg['token']==='') return false;
+        $dm = http_json('POST','https://discord.com/api/v10/users/@me/channels',
+            ['Authorization: Bot '.$cfg['token'],'Content-Type: application/json'],
+            ['recipient_id'=>$userId]
+        );
+        $chId = $dm['json']['id'] ?? null; if (!$chId) return false;
+        $send = http_json('POST',"https://discord.com/api/v10/channels/{$chId}/messages",
+            ['Authorization: Bot '.$cfg['token'],'Content-Type: application/json'],
+            ['content'=>$message]
+        );
+        return ($send && $send['code']>=200 && $send['code']<300);
+    }
+    function discord_send_to_fallback(string $message): bool {
+        $cfg = discord_cfg(); if ($cfg['token']==='' || $cfg['fallback_ch']==='') return false;
+        $send = http_json('POST',"https://discord.com/api/v10/channels/{$cfg['fallback_ch']}/messages",
+            ['Authorization: Bot '.$cfg['token'],'Content-Type: application/json'],
+            ['content'=>$message]
+        );
+        return ($send && $send['code']>=200 && $send['code']<300);
+    }
+    function discord_notify_by_name(string $discordName, string $message): void {
+        $uid = discord_find_user_id_by_name($discordName); $ok=false;
+        if ($uid) $ok = discord_dm_user_id($uid, $message);
+        if (!$ok) discord_send_to_fallback("Benachrichtigung für **{$discordName}** (DM nicht möglich): ".$message);
+    }
+}*/
 
 /* ---------- Schema Guards (idempotent) ---------- */
 function ensure_support_schema_view(): void {

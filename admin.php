@@ -1,6 +1,26 @@
 <?php
 // admin.php – Verwaltung inkl. Mehrfach-Upload & öffentliche Dokumente (is_public) + Oversize-Guard
 declare(strict_types=1);
+if (!function_exists('http_json')) {
+    function http_json(string $method, string $url, array $headers, ?array $body = null, int $timeout=8): ?array {
+        if (!function_exists('curl_init')) { error_log('Discord: php-curl missing'); return null; }
+        $ch = curl_init($url);
+        $hdr = array_merge(['Accept: application/json'], $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST   => $method,
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_TIMEOUT         => $timeout,
+            CURLOPT_CONNECTTIMEOUT  => $timeout,
+            CURLOPT_SSL_VERIFYPEER  => true,
+            CURLOPT_SSL_VERIFYHOST  => 2,
+            CURLOPT_HTTPHEADER      => $hdr
+        ]);
+        if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+        $resp = curl_exec($ch); if ($resp === false) { curl_close($ch); return null; }
+        $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
+        return ['code'=>$code,'json'=>json_decode($resp,true)];
+    }
+}
 require __DIR__ . '/db.php';
 require __DIR__ . '/_layout.php';
 
@@ -128,7 +148,7 @@ if (!function_exists('discord_cfg')) {
         ];
     }
 }
-if (!function_exists('http_json')) {
+/*if (!function_exists('http_json')) {
     function http_json(string $method, string $url, array $headers, ?array $body = null, int $timeout=8): ?array {
         if (!function_exists('curl_init')) { error_log('Discord: php-curl missing'); return null; }
         $ch = curl_init($url);
@@ -147,7 +167,7 @@ if (!function_exists('http_json')) {
         $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE); curl_close($ch);
         return ['code'=>$code,'json'=>json_decode($resp,true)];
     }
-}
+}*/
 if (!function_exists('discord_find_user_id_by_name')) {
     function discord_find_user_id_by_name(string $name): ?string {
         $cfg = discord_cfg(); if ($cfg['token']==='' || $cfg['guild_id']==='') return null;

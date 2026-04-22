@@ -110,62 +110,6 @@ CREATE TABLE IF NOT EXISTS applications (
   project_name TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- API: Refresh Tokens für JWT-Auth
-CREATE TABLE IF NOT EXISTS refresh_tokens (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  token_hash TEXT NOT NULL UNIQUE,
-  expires_at TEXT NOT NULL,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  revoked INTEGER DEFAULT 0,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- API: Rate Limiting
-CREATE TABLE IF NOT EXISTS rate_limits (
-  ip_address TEXT NOT NULL,
-  endpoint_group TEXT NOT NULL,
-  request_count INTEGER DEFAULT 1,
-  window_start TEXT NOT NULL,
-  PRIMARY KEY (ip_address, endpoint_group)
-);
-
--- Support Tickets
-CREATE TABLE IF NOT EXISTS tickets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  subject TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'open',
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS ticket_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ticket_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
-  message TEXT NOT NULL,
-  is_admin_reply INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- Kalender Events
-CREATE TABLE IF NOT EXISTS calendar_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  description TEXT,
-  start_date TEXT NOT NULL,
-  end_date TEXT,
-  all_day INTEGER DEFAULT 0,
-  color TEXT,
-  user_id INTEGER,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
 ");
 
 // --- Migration: Public-Flag für World Downloads nachrüsten ---
