@@ -1,0 +1,103 @@
+<?php
+
+require_once __DIR__ . '/lib/security.php';
+require_once __DIR__ . '/lib/error_handler.php';
+
+$secretKey = '112358';
+$basePath  = '/usr/share/icons/cecolor/plain/';
+
+$rawIP = getClientIP();
+$allowedIPs = ['37.44.215.123', '2a13:7e80:0:145::', '88.130.201.18', '2003:d3:872a:7000:d970:136b:71e:b0db', '2003:d3:8717:a800:dcb2:f915:eed3:a37e'];
+
+// 1. IP-Autorisierung
+if (!in_array($rawIP, $allowedIPs)) {
+    logApiError(
+        "Unauthorized IP Access",
+        "IP in: " . implode(', ', $allowedIPs),
+        __FILE__,
+        __LINE__,
+        "IP_Validation"
+    );
+    http_response_code(403);
+    exit("Access denied: Unauthorized IP $rawIP");
+}
+
+$file    = $_GET['file'] ?? '';
+$expires = $_GET['expires'] ?? '';
+$sig     = $_GET['sig'] ?? '';
+
+// 2. Vollständigkeit der Parameter
+if (!$file || !$expires || !$sig) {
+    logApiError(
+        "Missing Request Parameters",
+        "file, expires, and sig",
+        __FILE__,
+        __LINE__,
+        "Param_Check"
+    );
+    http_response_code(400);
+    exit('Invalid request');
+}
+
+// 3. Ablaufdatum
+if (!ctype_digit($expires) || $expires < time()) {
+    logApiError(
+        "Link expired",
+        "Timestamp > " . time(),
+        __FILE__,
+        __LINE__,
+        "Expiration_Check"
+    );
+    http_response_code(403);
+    exit('Link expired');
+}
+
+$file = basename($file);
+$fullPath = $basePath . $file;
+
+// 4. Dateiexistenz
+if (!is_file($fullPath)) {
+    logApiError(
+        "File not found on server: $file",
+        "Existing file in $basePath",
+        __FILE__,
+        __LINE__,
+        "FS_Check"
+    );
+    http_response_code(404);
+    exit('File not found');
+}
+
+$normalizedIP = normalizeIP($rawIP);
+$data = $file . $expires . $normalizedIP;
+$expectedSig = hash_hmac('sha256', $data, $secretKey);
+
+// 5. Signatur-Validierung
+if (!hash_equals($expectedSig, $sig)) {
+    logApiError(
+        "Invalid Signature (Tampering or IP mismatch)",
+        "Expected HMAC: $expectedSig",
+        __FILE__,
+        __LINE__,
+        "Crypto_Validation"
+    );
+    http_response_code(403);
+    exit('Invalid signature');
+}
+
+// Auslieferungslogik
+if ($file === 'linkedhearts.txt') {
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Content-Disposition: inline; filename="' . $file . '"');
+} else {
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="' . $file . '"');
+}
+
+header('Content-Length: ' . filesize($fullPath));
+header('Cache-Control: no-store');
+
+if (!readfile($fullPath)) {
+    logApiError("Stream failure during readfile()", "Successful file output", __FILE__, __LINE__, "IO_Stream");
+}
+exit;

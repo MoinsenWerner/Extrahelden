@@ -1,0 +1,17 @@
+<?php
+
+require_once __DIR__ . '/lib/security.php';
+
+$secretKey = '112358';
+
+$file = 'linkedhearts.txt';
+$expires = time() + 300; // 5 Minuten
+
+$ip = normalizeIP(getClientIP());
+
+$data = $file . $expires . $ip;
+$sig = hash_hmac('sha256', $data, $secretKey);
+
+$url = "https://www.extrahelden.de/api/download.php?file=$file&expires=$expires&sig=$sig";
+
+echo $url;

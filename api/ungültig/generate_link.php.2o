@@ -1,0 +1,31 @@
+<?php
+
+require_once __DIR__ . '/lib/security.php';
+require_once __DIR__ . '/lib/error_handler.php';
+
+$secretKey = '112358';
+$basePath  = '/usr/share/icons/cecolor/plain/';
+$file = 'linkedhearts.txt';
+
+// Vorab-Prüfung der Dateiexistenz
+if (!is_file($basePath . $file)) {
+    logApiError(
+        "Link-Generierung für nicht existierende Datei abgebrochen: $file",
+        "Datei muss physisch in $basePath liegen",
+        __FILE__,
+        __LINE__,
+        "Main"
+    );
+    http_response_code(500);
+    exit("Internal Error: Resource missing.");
+}
+
+$expires = time() + 300; // 5 Minuten
+$ip = normalizeIP(getClientIP());
+
+$data = $file . $expires . $ip;
+$sig = hash_hmac('sha256', $data, $secretKey);
+
+$url = "https://www.extrahelden.de/api/download.php?file=$file&expires=$expires&sig=$sig";
+
+echo $url;
